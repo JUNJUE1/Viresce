@@ -1,0 +1,369 @@
+:root {
+    --black: #0b0f19;
+    --border: #e6e8ee;
+    --bg: #f6f8fb;
+    --text: #0f172a;
+    --muted: #6b7280;
+    --card-bg: #ffffff;
+
+    --positive: #16a34a;
+    --negative: #dc2626;
+    --neutral: #64748b;
+
+    --radius: 16px;
+    --shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+body.dark {
+  --bg: #0b0f19;
+  --card-bg: #111827;
+  --text: #f3f4f6;
+  --muted: #9ca3af;
+  --border: #1f2937;
+}
+
+.theme-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 0 24px;
+}
+
+/* Header */
+header {
+    background: var(--black);
+    color: white;
+    padding: 22px 0;
+}
+
+.header-flex {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+}
+
+.logo {
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.tagline {
+    opacity: 0.7;
+    font-size: 0.9rem;
+}
+
+/* Nav */
+nav {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.nav-links {
+    display: flex;
+    gap: 28px;
+    padding: 14px 0;
+    list-style: none;
+    margin: 0;
+}
+
+.nav-links a {
+    text-decoration: none;
+    font-weight: 600;
+    color: var(--muted);
+    padding-bottom: 6px;
+}
+
+.nav-links a.active {
+    color: var(--text);
+    border-bottom: 2px solid var(--text);
+}
+
+/* Page hero */
+.page-hero {
+    padding: 48px 0 24px;
+}
+
+.page-hero.compact {
+    padding-top: 32px;
+}
+
+.page-hero h2 {
+    font-size: 2rem;
+    margin-bottom: 6px;
+}
+
+.page-hero p {
+    color: var(--muted);
+    max-width: 520px;
+}
+
+/* Dashboard grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+/* Cards */
+.card {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.card h4 {
+    margin: 0 0 8px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+
+/* Compare layout */
+#app-interface {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.controls,
+#chart-area {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+#chart-area canvas {
+  width: 100% !important;
+  height: 360px !important;
+}
+
+/* Buttons */
+button {
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: white;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+button.active {
+    background: var(--black);
+    color: white;
+}
+
+/* Footer */
+footer {
+    margin-top: 60px;
+    padding: 30px;
+    background: #eef2f7;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+/* Status colors */
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.neutral { color: var(--neutral); }
+
+/* Compare / Search Inputs */
+.search-input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    border-radius: 12px;       /* more rounded than default */
+    border: 1px solid var(--border);
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--black);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+/* Dropdown & Ticker List */
+.ticker-results,
+/* --- Metric Dropdown (same as ticker dropdown) --- */
+.dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 0;
+    margin: 8px 0 0 0;
+    list-style: none;
+    z-index: 100;
+    display: none; /* important */
+}
+
+.dropdown-list li {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-weight: 500;
+}
+
+.dropdown-list li:hover {
+    background: var(--bg);
+    color: var(--black);
+}
+
+/* Controls panel */
+.controls {
+    padding: 24px;
+    gap: 16px;
+}
+
+/* Chart Area same as cards */
+#chart-area {
+    min-height: 420px;
+    padding: 24px;
+}
+
+/* Metric Dropdown Arrow */
+.metric-dropdown .dropdown-arrow {
+    right: 14px;
+}
+
+/* --- Ticker Search Dropdown --- */
+.ticker-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 0;
+    margin: 8px 0 0 0;
+    list-style: none;
+    z-index: 100;
+    display: none;
+
+}
+
+.ticker-results li {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-weight: 500;
+}
+
+.ticker-results li:hover {
+    background: var(--bg);
+    color: var(--black);
+}
+
+.index-price {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 6px 0;
+}
+
+.index-change {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* --- Selected Stock Pills --- */
+#selected-stocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--black);
+    color: white;
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.pill .remove {
+    margin-left: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s ease;
+}
+
+.pill .remove:hover {
+    transform: scale(1.2);
+}
+
+/* --- Selected Metric Pill --- */
+#selected-metric {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+/* Fix positioning for metric search container */
+.metric-search {
+    position: relative;
+}
+
+/* Fix positioning for search input container */
+.ticker-search {
+    position: relative;
+}
+
+.range-selector button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+}
+
+.range-selector button.active {
+  background: #4F46E5;
+  color: white;
+}

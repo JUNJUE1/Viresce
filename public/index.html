@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Viresce | Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+    <button id="themeToggle" class="theme-btn">🌙</button>
+    <div class="container header-flex">
+        <h1 class="logo">VIRESCE</h1>
+        <span class="tagline">Market & Sentiment Overview</span>
+    </div>
+</header>
+
+<nav>
+    <div class="container">
+        <ul class="nav-links">
+            <li><a href="/index.html" class="active">Dashboard</a></li>
+            <li><a href="/compare.html">Compare</a></li>
+           <!--- <li><a href="#">Reddit Feed</a></li> --->
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+
+    <section class="page-hero">
+        <h2>Market Overview</h2>
+        <p>Live snapshot of markets, sentiment, and volatility.</p>
+    </section>
+
+    <section class="dashboard-grid" id="indexesGrid">
+        <div class="card">
+            <h4>S&P 500</h4>
+            <p class="index-price">--</p>
+            <p class="index-change neutral">Loading...</p>
+        </div>
+
+        <div class="card">
+            <h4>NASDAQ</h4>
+            <p class="index-price">--</p>
+            <p class="index-change neutral">Loading...</p>
+        </div>
+
+        <div class="card">
+            <h4>Dow Jones</h4>
+            <p class="index-price">--</p>
+            <p class="index-change neutral">Loading...</p>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    <p>&copy; 2026 Viresce FinTech</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="./dashboard.js"></script>
+</body>
+</html>
