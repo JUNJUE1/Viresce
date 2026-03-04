@@ -367,3 +367,50 @@ footer {
   background: #4F46E5;
   color: white;
 }
+
+/*Fund*/
+.ticker-search {
+  position: relative;
+}
+
+.ticker-result {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  /*border: 1px solid #858282;*/
+  border-radius: 6px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.ticker-result li {
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  list-style: none;
+}
+
+.ticker-result li:hover,
+.ticker-result li.active {
+  background: #f4f4f5;
+}
+
+.ticker-symbol {
+  font-weight: 600;
+  display: inline; /* Ensure it stays inline */
+}
+
+#tickerResult li {
+  padding: 8px 12px;
+  display: flex; /* if using flex, space will need justify-content */
+  gap: 4px;      /* optional small space */
+  list-style: none; /* remove bullet points */
+}

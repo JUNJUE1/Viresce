@@ -4,6 +4,13 @@ import fetch from "node-fetch";
 import path from "path";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
+import {
+  calculateEMA,
+  calculateMACD,
+  calculateRSI,
+  calculateSMA
+} from "./services/indicators.js";
+import { validateSymbol, validateRange } from "./utils/validators.js";
 
 const app = express();
 
@@ -70,146 +77,11 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
-function calculateEMA(data, period) {
-  const k = 2 / (period + 1);
-  let ema = [];
-  let prev;
-
-  data.forEach((price, i) => {
-    if (i === 0) {
-      prev = price;
-      ema.push(price);
-    } else {
-      prev = price * k + prev * (1 - k);
-      ema.push(prev);
-    }
-  });
-
-  return ema;
-}
-
-function calculateMACD(prices) {
-  const ema12 = calculateEMA(prices, 12);
-  const ema26 = calculateEMA(prices, 26);
-
-  const macd = ema12.map((v, i) => v - ema26[i]);
-  const signal = calculateEMA(macd, 9);
-
-  return { macd, signal };
-}
-
-function calculateRSI(prices, period = 14) {
-  let gains = [];
-  let losses = [];
-
-  for (let i = 1; i < prices.length; i++) {
-    const diff = prices[i] - prices[i - 1];
-    gains.push(diff > 0 ? diff : 0);
-    losses.push(diff < 0 ? -diff : 0);
-  }
-
-  const avgGain = calculateEMA(gains, period);
-  const avgLoss = calculateEMA(losses, period);
-
-  const rsi = avgGain.map((g, i) => {
-    if (!avgLoss[i]) return 100;
-    const rs = g / avgLoss[i];
-    return 100 - 100 / (1 + rs);
-  });
-
-  return [null, ...rsi];
-}
-
-function calculateSMA(data, period) {
-  return data.map((_, i) => {
-    if (i < period - 1) return null;
-    const slice = data.slice(i - period + 1, i + 1);
-    return slice.reduce((a, b) => a + b, 0) / period;
-  });
-}
-
 /* -------------------------
    Candle Data Endpoint
 --------------------------*/
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.get("/api/candle", async (req, res) => {
-  try {
-    const symbol = req.query.symbol;
-    const range = req.query.range || "1y";
-
-    const allowedRanges = ["1m", "3m", "6m", "1y", "5y"];
-    if (!allowedRanges.includes(range)) {
-      return res.status(400).json({ error: "Invalid range" });
-    }
-
-    function validateSymbol(symbol) {
-      return symbol && /^[A-Z.\-]{1,10}$/i.test(symbol);
-    }
-
-    if (!validateSymbol(symbol)) {
-      return res.status(400).json({ error: "Invalid symbol" });
-    }
-
-    const yahooUrl =
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}` +
-      `?range=${range}&interval=1d`;
-
-    const yRes = await fetch(yahooUrl);
-    const yData = await yRes.json();
-    const result = yData.chart.result?.[0];
-
-    if (!result) {
-      return res.json({
-        labels: [],
-        price: [],
-        macd: [],
-        signal: [],
-        rsi: [],
-        sma20: [],
-        ema50: [],
-        volume: []
-      });
-    }
-
-    const labels = result.timestamp.map(t =>
-      new Date(t * 1000).toISOString().split("T")[0]
-    );
-
-    const prices = result.indicators.quote[0].close;
-    const volume = result.indicators.quote[0].volume;
-
-    const { macd, signal } = calculateMACD(prices);
-    const rsi = calculateRSI(prices);
-    const sma20 = calculateSMA(prices, 20);
-    const ema50 = calculateEMA(prices, 50);
-
-    res.json({
-      labels,
-      price: prices,
-      macd,
-      signal,
-      rsi,
-      sma20,
-      ema50,
-      volume
-    });
-
-  } catch (err) {
-    console.error("CANDLE ERROR:", err);
-    res.json({
-      labels: [],
-      price: [],
-      macd: [],
-      signal: [],
-      rsi: [],
-      sma20: [],
-      ema50: [],
-      volume: []
-    });
-  }
 });
 
 /* -------------------------
@@ -266,6 +138,123 @@ app.get("/api/indexes", async (req, res) => {
     res.status(500).json([]);
   }
 });
+/* -------------------------
+   Fund Endpoint
+--------------------------*/
+app.get("/api/fund", async (req, res) => {
+  try {
+
+    const symbols = req.query.symbols?.split(",");
+    const weights = req.query.weights?.split(",").map(Number);
+
+    if (!symbols.length) {
+      return res.status(400).json({ error: "No symbols provided" });
+    }
+    
+    const range = req.query.range || "1y";
+    const startDate = req.query.startDate;
+
+    if (!symbols || !weights || symbols.length !== weights.length) {
+      return res.status(400).json({ error: "Invalid input" });
+    }
+
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const normalizedWeights = weights.map(w => w / totalWeight);
+
+    let portfolio = [];
+    let labels = [];
+
+    for (let s = 0; s < symbols.length; s++) {
+      const symbol = symbols[s];
+
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=1d`;
+      const r = await fetch(url);
+      const data = await r.json();
+
+      const result = data.chart?.result?.[0];
+      if (!result) continue;
+
+      const rawCloses = result.indicators.quote[0].close;
+      const rawTimestamps = result.timestamp;
+
+      const closes = [];
+      const validLabels = [];
+
+      for (let i = 0; i < rawCloses.length; i++) {
+        if (rawCloses[i] != null) {
+          closes.push(rawCloses[i]);
+          validLabels.push(
+            new Date(rawTimestamps[i] * 1000).toISOString().split("T")[0]
+          );
+        }
+      }
+
+      if (startDate) {
+        const index = labels.findIndex(date => date >= startDate);
+        if (s === 0) {
+          labels = validLabels;
+          portfolio = new Array(closes.length).fill(0);
+        }
+        if (index > 0) {
+          labels = labels.slice(index);
+          portfolio = portfolio.slice(index);
+        }
+      }
+      const base = closes[0];
+      const normalized = closes.map(p => (p / base) * 100);
+
+      for (let i = 0; i < normalized.length; i++) {
+        portfolio[i] += normalized[i] * normalizedWeights[s];
+      }
+    }
+
+    // ----- Fetch S&P 500 for comparison -----
+    const spUrl = `https://query1.finance.yahoo.com/v8/finance/chart/^GSPC?range=${range}&interval=1d`;
+    const spRes = await fetch(spUrl);
+    const spData = await spRes.json();
+    const spResult = spData.chart?.result?.[0];
+
+    let sp500 = [];
+    if (spResult) {
+      const spCloses = spResult.indicators.quote[0].close.filter(Boolean);
+      const spBase = spCloses[0];
+      sp500 = spCloses.map(p => (p / spBase) * 100);
+    }
+
+    // ----- Metrics -----
+    const totalReturn = ((portfolio[portfolio.length - 1] - 100));
+
+    const dailyReturns = portfolio.slice(1).map((p, i) =>
+      (p - portfolio[i]) / portfolio[i]
+    );
+
+    const avgReturn =
+      dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
+
+    const volatility = Math.sqrt(
+      dailyReturns.reduce((a, b) => a + Math.pow(b - avgReturn, 2), 0) /
+      dailyReturns.length
+    );
+
+    const sharpe = volatility ? (avgReturn / volatility) * Math.sqrt(252) : 0;
+
+    res.json({
+      labels,
+      portfolio,
+      sp500,
+      metrics: {
+        totalReturn: totalReturn.toFixed(2),
+        volatility: (volatility * 100).toFixed(2),
+        sharpe: sharpe.toFixed(2)
+      }
+    });
+
+  } catch (err) {
+    console.error("FUND ERROR:", err);
+    res.status(500).json({ error: "Fund calculation failed" });
+  }
+});
+
 
 /* -------------------------
    Server Start
