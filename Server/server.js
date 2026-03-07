@@ -11,6 +11,7 @@ import {
   calculateSMA
 } from "./services/indicators.js";
 import { validateSymbol, validateRange } from "./utils/validators.js";
+import candleRouter from "./routes/candle.js";
 
 const app = express();
 
@@ -33,10 +34,6 @@ console.log("ENV LOADED:", {
   FMP: !!process.env.FMP_KEY,
   ALPHA: !!process.env.ALPHA_VANTAGE_KEY
 });
-
-app.use(express.static(__dirname));
-
-app.use(express.static(path.resolve(__dirname, "../public")));
 
 function rangeToDays(range) {
   switch (range) {
@@ -81,9 +78,10 @@ app.get("/api/search", async (req, res) => {
    Candle Data Endpoint
 --------------------------*/
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
+app.use("/api/candle", candleRouter);
 /* -------------------------
    Indexes Endpoint
 --------------------------*/
@@ -189,15 +187,17 @@ app.get("/api/fund", async (req, res) => {
         }
       }
 
-      if (startDate) {
-        const index = labels.findIndex(date => date >= startDate);
-        if (s === 0) {
-          labels = validLabels;
-          portfolio = new Array(closes.length).fill(0);
-        }
-        if (index > 0) {
-          labels = labels.slice(index);
-          portfolio = portfolio.slice(index);
+      if (s === 0) {
+        labels = validLabels;
+        portfolio = new Array(closes.length).fill(0);
+
+        if (startDate) {
+          const index = labels.findIndex(date => date >= startDate);
+          if (index > 0) {
+            labels = labels.slice(index);
+            portfolio = portfolio.slice(index);
+            // also trim closes to match
+          }
         }
       }
       const base = closes[0];
@@ -255,7 +255,9 @@ app.get("/api/fund", async (req, res) => {
   }
 });
 
+/*app.use(express.static(__dirname));*/
 
+app.use(express.static(path.resolve(__dirname, "../public")));
 /* -------------------------
    Server Start
 --------------------------*/
