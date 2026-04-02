@@ -1,2 +1,7 @@
-node_modules/
+# Environment
 .env
+node_modules/
+
+# Test files
+testdb.js
+Server/server.mock.js
