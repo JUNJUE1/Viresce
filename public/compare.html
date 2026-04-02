@@ -3,81 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <title>Viresce | Compare</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+    <meta name="theme-color" content="#0b0f19">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-
 <header>
     <div class="container header-flex">
         <h1 class="logo">VIRESCE</h1>
         <span class="tagline">Stock Comparison Engine</span>
     </div>
 </header>
-
 <nav>
     <div class="container">
         <ul class="nav-links">
             <li><a href="/index.html">Dashboard</a></li>
             <li><a href="/compare.html" class="active">Compare</a></li>
             <li><a href="/fund.html">My Fund</a></li>
+            <li><a href="/myfunds.html">Saved Funds</a></li>
         </ul>
     </div>
 </nav>
-
 <main class="container">
-
     <section class="page-hero">
         <h2>Compare Assets</h2>
         <p>Compare stocks and metrics — all on one chart.</p>
     </section>
-
     <section id="app-interface">
-
         <aside class="controls">
-
             <div class="control-group">
                 <h4>Stocks</h4>
                 <div id="selected-stocks"></div>
-
                 <div class="ticker-search">
-                    <!-- ADDED id -->
                     <input
                         id="stock-input"
                         type="text"
                         placeholder="Search ticker..."
                         class="search-input"
+                        autocomplete="off"
                     />
-                    <!-- ADDED id -->
                     <ul id="tickerResults" class="ticker-results"></ul>
                 </div>
             </div>
-
             <div class="control-group">
                 <h4>Metric</h4>
-
-                <!-- selected metric pill -->
                 <div id="selected-metric"></div>
-
                 <div class="metric-search">
                     <input
-                    id="metric-input"
-                    type="text"
-                    placeholder="Select metric..."
-                    class="search-input"
+                        id="metric-input"
+                        type="text"
+                        placeholder="Select metric..."
+                        class="search-input"
                     />
                     <ul id="metricResults" class="dropdown-list"></ul>
                 </div>
-                </div>
-
-
+            </div>
             <div class="control-group">
-                <label>
-                    <!-- ADDED id -->
-                    <input type="checkbox" id="normalizeToggle"> Normalize
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem;">
+                    <input type="checkbox" id="normalizeToggle"> Normalize to 100
                 </label>
             </div>
-
             <div class="range-selector">
                 <button data-range="1m">1M</button>
                 <button data-range="3m">3M</button>
@@ -85,26 +70,19 @@
                 <button data-range="1y" class="active">1Y</button>
                 <button data-range="5y">5Y</button>
             </div>
-
-
         </aside>
-
         <section id="chart-area">
             <div id="chart-loading" hidden>Loading…</div>
             <canvas id="stockChart"></canvas>
         </section>
-
     </section>
-
 </main>
-
 <footer>
     <p>&copy; 2026 Viresce FinTech</p>
 </footer>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-<script src="app.js"></script>
-
+<script src="/app.js"></script>
+<script src="/auth-utils.js"></script>
 </body>
 </html>

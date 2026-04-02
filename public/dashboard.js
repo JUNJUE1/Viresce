@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
       title.textContent = idx.name;
 
       const price = document.createElement("p");
+      price.className = "index-price"; 
       price.textContent = idx.price.toFixed(2);
 
       const change = document.createElement("p");

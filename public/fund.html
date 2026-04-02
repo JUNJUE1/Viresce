@@ -3,84 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <title>Viresce | Build Your Fund</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+    <meta name="theme-color" content="#0b0f19">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-
 <header>
     <div class="container header-flex">
         <h1 class="logo">VIRESCE</h1>
         <span class="tagline">Create & Simulate Your Own Fund</span>
     </div>
 </header>
-
 <nav>
     <div class="container">
         <ul class="nav-links">
             <li><a href="/index.html">Dashboard</a></li>
             <li><a href="/compare.html">Compare</a></li>
             <li><a href="/fund.html" class="active">My Fund</a></li>
+            <li><a href="/myfunds.html">Saved Funds</a></li>
         </ul>
     </div>
 </nav>
-
 <main class="container">
-
     <section class="page-hero">
-        <h2>Build Your Own Fund</h2>
+        <h2>Build Your Fund</h2>
         <p>Select stocks, assign weights, and simulate performance.</p>
     </section>
-
+    <section id="fundMetrics"></section>
     <section id="app-interface">
-
-        <!-- LEFT PANEL (same as compare layout) -->
         <aside class="controls">
-        <div class="control-group">
-            <h4>Add Asset</h4>
-
-            <div class="ticker-search">
-                <input
-                    id="symbolInput"
-                    type="text"
-                    placeholder="Search ticker..."
-                    class="search-input"
-                    autocomplete="off"
-                />
-                <ul id="tickerResult" class="ticker-result"></ul>
-            </div>
-
-            <input
-                id="weightInput"
-                type="number"
-                placeholder="Weight %"
-                class="search-input"
-                style="margin-top:10px;"
-            />
-
             <div class="control-group">
-            <h4>Start Date</h4>
+                <h4>Add Asset</h4>
+                <div class="ticker-search">
+                    <input
+                        id="symbolInput"
+                        type="text"
+                        placeholder="Search ticker..."
+                        class="search-input"
+                        autocomplete="off"
+                    />
+                    <ul id="tickerResult" class="ticker-result"></ul>
+                </div>
+                <input
+                    id="weightInput"
+                    type="number"
+                    placeholder="Weight %"
+                    class="search-input"
+                    min="1"
+                    max="100"
+                />
+            </div>
+            <div class="control-group">
+                <h4>Start Date</h4>
                 <input
                     type="date"
                     id="startDateInput"
                     class="search-input"
                 />
             </div>
-
-
-            <button style="margin-top:12px; width:100%;" onclick="addStock()">
-                Add to Fund
+            <button style="width:100%;" onclick="addStock()">
+                + Add to Fund
             </button>
-        </div>
-
-
             <div class="control-group">
                 <h4>Fund Allocation</h4>
                 <div id="fundList"></div>
                 <div id="allocationSummary"></div>
-
             </div>
-
             <div class="range-selector">
                 <button data-range="1m">1M</button>
                 <button data-range="3m">3M</button>
@@ -88,30 +76,21 @@
                 <button data-range="1y" class="active">1Y</button>
                 <button data-range="5y">5Y</button>
             </div>
-
-            <button style="margin-top:20px; width:100%;" onclick="generateFund()">
-                Generate Fund
+            <button style="width:100%;" onclick="generateFund()">
+                Generate Fund →
             </button>
-
         </aside>
-
-        <!-- RIGHT PANEL -->
         <section id="chart-area">
             <div id="fund-loading" hidden>Loading...</div>
             <canvas id="fundChart"></canvas>
         </section>
-        <section class="dashboard-grid" id="fundMetrics"></section>
-
     </section>
-
 </main>
-
 <footer>
     <p>&copy; 2026 Viresce FinTech</p>
 </footer>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/fund.js"></script>
-
+<script src="/auth-utils.js"></script>
 </body>
 </html>
