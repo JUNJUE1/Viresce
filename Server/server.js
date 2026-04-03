@@ -463,6 +463,15 @@ app.get("/api/fund", async (req, res) => {
   }
 });
 
+app.get("/api/debug-fundamentals", async (req, res) => {
+  const { symbol } = req.query;
+  const [profileRes, ratiosRes, incomeRes] = await Promise.all([
+    fetchFMP(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`),
+    fetchFMP(`https://financialmodelingprep.com/api/v3/ratios-ttm/${symbol}?apikey=${FMP_KEY}`),
+    fetchFMP(`https://financialmodelingprep.com/api/v3/income-statement/${symbol}?limit=1&apikey=${FMP_KEY}`)
+  ]);
+  res.json({ profile: profileRes?.[0], ratios: ratiosRes?.[0], income: incomeRes?.[0] });
+});
 /* -------------------------
    Static Files (AFTER all API routes)
 --------------------------*/
