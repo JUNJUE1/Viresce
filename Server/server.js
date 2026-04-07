@@ -465,12 +465,23 @@ app.get("/api/fund", async (req, res) => {
 
 app.get("/api/debug-fundamentals", async (req, res) => {
   const { symbol } = req.query;
-  const [profileRes, ratiosRes, incomeRes] = await Promise.all([
-    fetchFMP(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`),
-    fetchFMP(`https://financialmodelingprep.com/api/v3/ratios-ttm/${symbol}?apikey=${FMP_KEY}`),
-    fetchFMP(`https://financialmodelingprep.com/api/v3/income-statement/${symbol}?limit=1&apikey=${FMP_KEY}`)
+  
+  // Raw FMP calls — no error swallowing
+  const profileUrl = `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`;
+  const ratiosUrl  = `https://financialmodelingprep.com/api/v3/ratios-ttm/${symbol}?apikey=${FMP_KEY}`;
+  const incomeUrl  = `https://financialmodelingprep.com/api/v3/income-statement/${symbol}?limit=1&apikey=${FMP_KEY}`;
+
+  const [p, r, i] = await Promise.all([
+    fetch(profileUrl).then(r => r.text()),
+    fetch(ratiosUrl).then(r => r.text()),
+    fetch(incomeUrl).then(r => r.text())
   ]);
-  res.json({ profile: profileRes?.[0], ratios: ratiosRes?.[0], income: incomeRes?.[0] });
+
+  res.json({
+    profileRaw: p,
+    ratiosRaw: r,
+    incomeRaw: i
+  });
 });
 /* -------------------------
    Static Files (AFTER all API routes)
