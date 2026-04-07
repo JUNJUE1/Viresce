@@ -118,7 +118,7 @@ app.get("/api/search", async (req, res) => {
 
   // FMP first — most reliable on cloud servers
   const fmpData = await fetchFMP(
-    `https://financialmodelingprep.com/api/v3/search?query=${encodeURIComponent(q)}&limit=8&apikey=${FMP_KEY}`
+    `https://financialmodelingprep.com/stable/search?query=${encodeURIComponent(q)}&limit=8&apikey=${FMP_KEY}`
   );
   if (fmpData?.length) {
     return res.json(
@@ -157,9 +157,9 @@ app.get("/api/fundamentals", async (req, res) => {
 
     // Try FMP first
     const [profileRes, ratiosRes, incomeRes] = await Promise.all([
-      fetchFMP(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`),
-      fetchFMP(`https://financialmodelingprep.com/api/v3/ratios-ttm/${symbol}?apikey=${FMP_KEY}`),
-      fetchFMP(`https://financialmodelingprep.com/api/v3/income-statement/${symbol}?limit=1&apikey=${FMP_KEY}`)
+      fetchFMP(`https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_KEY}`),
+      fetchFMP(`https://financialmodelingprep.com/stable/key-metrics?symbol=${symbol}&apikey=${FMP_KEY}`),
+      fetchFMP(`https://financialmodelingprep.com/stable/income-statement?symbol=${symbol}&apikey=${FMP_KEY}`)
     ]);
 
     const profile = profileRes?.[0];
@@ -267,7 +267,7 @@ app.get("/api/indexes", async (req, res) => {
       // FMP fallback (not available for VIX)
       if (item.fmp) {
         const fmpData = await fetchFMP(
-          `https://financialmodelingprep.com/api/v3/quote/${item.fmp}?apikey=${FMP_KEY}`
+          `https://financialmodelingprep.com/stable/quote/${item.fmp}?apikey=${FMP_KEY}`
         );
         const q = fmpData?.[0];
         if (q) {
@@ -328,7 +328,7 @@ app.get("/api/fund", async (req, res) => {
 
       // FMP fallback
       const fmpData = await fetchFMP(
-        `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?apikey=${FMP_KEY}`
+        `https://financialmodelingprep.com/stable/historical-price-full/${symbol}?apikey=${FMP_KEY}`
       );
       const historical = fmpData?.historical;
       if (historical?.length) {
@@ -418,7 +418,7 @@ app.get("/api/fund", async (req, res) => {
       sp500 = spCloses.map(p => (p / spCloses[0]) * 100);
     } else {
       const fmpSP = await fetchFMP(
-        `https://financialmodelingprep.com/api/v3/historical-price-full/SPY?apikey=${FMP_KEY}`
+        `https://financialmodelingprep.com/stable/historical-price-full/SPY?apikey=${FMP_KEY}`
       );
       if (fmpSP?.historical?.length) {
         const sorted = [...fmpSP.historical].reverse().slice(-(days));
@@ -465,23 +465,10 @@ app.get("/api/fund", async (req, res) => {
 
 app.get("/api/debug-fundamentals", async (req, res) => {
   const { symbol } = req.query;
-  
-  // Raw FMP calls — no error swallowing
-  const profileUrl = `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`;
-  const ratiosUrl  = `https://financialmodelingprep.com/api/v3/ratios-ttm/${symbol}?apikey=${FMP_KEY}`;
-  const incomeUrl  = `https://financialmodelingprep.com/api/v3/income-statement/${symbol}?limit=1&apikey=${FMP_KEY}`;
-
-  const [p, r, i] = await Promise.all([
-    fetch(profileUrl).then(r => r.text()),
-    fetch(ratiosUrl).then(r => r.text()),
-    fetch(incomeUrl).then(r => r.text())
-  ]);
-
-  res.json({
-    profileRaw: p,
-    ratiosRaw: r,
-    incomeRaw: i
-  });
+  const r = await fetch(
+    `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_KEY}`
+  );
+  res.send(await r.text());
 });
 /* -------------------------
    Static Files (AFTER all API routes)

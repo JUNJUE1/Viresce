@@ -80,7 +80,7 @@ router.get("/", async (req, res) => {
       const days = daysMap[range] || 365;
 
       const fmpData = await fetchFMP(
-        `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?timeseries=${days}&apikey=${FMP_KEY}`
+        `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_KEY}`
       );
       const historical = fmpData?.historical;
 
