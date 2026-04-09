@@ -156,33 +156,36 @@ app.get("/api/fundamentals", async (req, res) => {
     let metrics = null;
 
     // Try FMP first
-    const [profileRes, ratiosRes, incomeRes] = await Promise.all([
+    const [profileRes, keyMetricsRes, incomeRes] = await Promise.all([
       fetchFMP(`https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_KEY}`),
       fetchFMP(`https://financialmodelingprep.com/stable/key-metrics?symbol=${symbol}&apikey=${FMP_KEY}`),
       fetchFMP(`https://financialmodelingprep.com/stable/income-statement?symbol=${symbol}&apikey=${FMP_KEY}`)
     ]);
 
-    const profile = profileRes?.[0];
-    const ratios  = ratiosRes?.[0];
-    const income  = incomeRes?.[0];
+    const profile    = profileRes?.[0];
+    const keyMetrics = keyMetricsRes?.[0];
+    const income     = incomeRes?.[0];
 
     if (profile) {
+      // Parse 52W high/low from range string "169.21-288.62"
+      const [week52Low, week52High] = (profile.range || "").split("-").map(Number);
+
       metrics = {
-        currentPrice:  { raw: profile.price,                formatted: fmt(profile.price),                        label: "Current Price"  },
-        marketCap:     { raw: profile.mktCap,               formatted: fmt(profile.mktCap, "currency"),           label: "Market Cap"     },
-        peRatio:       { raw: ratios?.peRatioTTM,           formatted: fmt(ratios?.peRatioTTM),                   label: "P/E Ratio"      },
-        forwardPE:     { raw: null,                         formatted: "N/A",                                     label: "Forward P/E"    },
-        dividendYield: { raw: profile.lastDiv,              formatted: profile.lastDiv ? fmt(profile.lastDiv) : "N/A", label: "Dividend Yield" },
-        week52High:    { raw: profile["52WeekHigh"],        formatted: fmt(profile["52WeekHigh"]),                label: "52W High"       },
-        week52Low:     { raw: profile["52WeekLow"],         formatted: fmt(profile["52WeekLow"]),                 label: "52W Low"        },
-        revenue:       { raw: income?.revenue,              formatted: fmt(income?.revenue, "currency"),          label: "Revenue (TTM)"  },
-        netIncome:     { raw: income?.netIncome,            formatted: fmt(income?.netIncome, "currency"),        label: "Net Income"     },
-        profitMargin:  { raw: ratios?.netProfitMarginTTM,  formatted: ratios?.netProfitMarginTTM != null ? (ratios.netProfitMarginTTM * 100).toFixed(2) + "%" : "N/A", label: "Profit Margin" },
-        revenueGrowth: { raw: null,                         formatted: "N/A",                                     label: "Revenue Growth" }
+        currentPrice:  { raw: profile.price,          formatted: fmt(profile.price),                    label: "Current Price"  },
+        marketCap:     { raw: profile.marketCap,       formatted: fmt(profile.marketCap, "currency"),    label: "Market Cap"     },
+        peRatio:       { raw: keyMetrics?.peRatio,     formatted: fmt(keyMetrics?.peRatio),              label: "P/E Ratio"      },
+        forwardPE:     { raw: null,                    formatted: "N/A",                                 label: "Forward P/E"    },
+        dividendYield: { raw: profile.lastDividend,    formatted: profile.lastDividend ? fmt(profile.lastDividend) : "N/A", label: "Dividend Yield" },
+        week52High:    { raw: week52High,              formatted: fmt(week52High),                       label: "52W High"       },
+        week52Low:     { raw: week52Low,               formatted: fmt(week52Low),                        label: "52W Low"        },
+        revenue:       { raw: income?.revenue,         formatted: fmt(income?.revenue, "currency"),      label: "Revenue (TTM)"  },
+        netIncome:     { raw: income?.netIncome,       formatted: fmt(income?.netIncome, "currency"),    label: "Net Income"     },
+        profitMargin:  { raw: keyMetrics?.netProfitMargin, formatted: keyMetrics?.netProfitMargin != null ? (keyMetrics.netProfitMargin * 100).toFixed(2) + "%" : "N/A", label: "Profit Margin" },
+        revenueGrowth: { raw: null,                    formatted: "N/A",                                 label: "Revenue Growth" }
       };
       console.log(`✅ Fundamentals via FMP: ${symbol}`);
     }
-
+    
     // Yahoo fallback
     if (!metrics) {
       const data = await fetchYahoo(
