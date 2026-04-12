@@ -38,36 +38,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* =========================
      STATE
+     selectedItems is now an array of objects:
+       { type: "stock", symbol: "AAPL" }
+       { type: "fund",  name: "My Tech Fund", stocks: [...], id: "..." }
   ========================= */
   const COLORS = ["#4F46E5", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", "#EC4899"];
-  let selectedStocks = [];
+  let selectedItems  = [];  // replaces old selectedStocks
   let selectedMetric = "price";
-  let normalize = false;
-  let selectedRange = "1y";
+  let normalize      = false;
+  let selectedRange  = "1y";
 
   /* =========================
      METRICS CONFIG
-     isFundamental = true means fetched from /api/fundamentals
-     isChart = false means displayed as a table, not a chart line
   ========================= */
   const METRICS = {
-    price:        { label: "Price",           normalize: true,  isFundamental: false },
-    rsi:          { label: "RSI (14)",         normalize: false, isFundamental: false },
-    macd:         { label: "MACD",             normalize: false, isFundamental: false },
-    volume:       { label: "Volume",           normalize: false, isFundamental: false },
-    sma20:        { label: "SMA 20",           normalize: false, isFundamental: false },
-    ema50:        { label: "EMA 50",           normalize: false, isFundamental: false },
-    // Fundamental metrics — displayed as comparison table
-    marketCap:    { label: "Market Cap",       normalize: false, isFundamental: true },
-    peRatio:      { label: "P/E Ratio",        normalize: false, isFundamental: true },
-    forwardPE:    { label: "Forward P/E",      normalize: false, isFundamental: true },
-    dividendYield:{ label: "Dividend Yield",   normalize: false, isFundamental: true },
-    week52High:   { label: "52W High",         normalize: false, isFundamental: true },
-    week52Low:    { label: "52W Low",          normalize: false, isFundamental: true },
-    revenue:      { label: "Revenue (TTM)",    normalize: false, isFundamental: true },
-    netIncome:    { label: "Net Income",       normalize: false, isFundamental: true },
-    profitMargin: { label: "Profit Margin",    normalize: false, isFundamental: true },
-    revenueGrowth:{ label: "Revenue Growth",   normalize: false, isFundamental: true },
+    price:        { label: "Price",          normalize: true,  isFundamental: false },
+    rsi:          { label: "RSI (14)",        normalize: false, isFundamental: false },
+    macd:         { label: "MACD",            normalize: false, isFundamental: false },
+    volume:       { label: "Volume",          normalize: false, isFundamental: false },
+    sma20:        { label: "SMA 20",          normalize: false, isFundamental: false },
+    ema50:        { label: "EMA 50",          normalize: false, isFundamental: false },
+    marketCap:    { label: "Market Cap",      normalize: false, isFundamental: true  },
+    peRatio:      { label: "P/E Ratio",       normalize: false, isFundamental: true  },
+    forwardPE:    { label: "Forward P/E",     normalize: false, isFundamental: true  },
+    dividendYield:{ label: "Dividend Yield",  normalize: false, isFundamental: true  },
+    week52High:   { label: "52W High",        normalize: false, isFundamental: true  },
+    week52Low:    { label: "52W Low",         normalize: false, isFundamental: true  },
+    revenue:      { label: "Revenue (TTM)",   normalize: false, isFundamental: true  },
+    netIncome:    { label: "Net Income",      normalize: false, isFundamental: true  },
+    profitMargin: { label: "Profit Margin",   normalize: false, isFundamental: true  },
+    revenueGrowth:{ label: "Revenue Growth",  normalize: false, isFundamental: true  },
   };
 
   /* =========================
@@ -84,6 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (el) el.hidden = !state;
   }
 
+  function hasFunds() {
+    return selectedItems.some(i => i.type === "fund");
+  }
+
   async function fetchMetric(symbol) {
     const res = await fetch(`/api/candle?symbol=${symbol}&range=${selectedRange}`);
     if (!res.ok) throw new Error(`Failed to fetch ${symbol}`);
@@ -96,16 +100,24 @@ document.addEventListener("DOMContentLoaded", () => {
     return res.json();
   }
 
+  // Fetch a saved fund's performance as a normalized series
+  async function fetchFundPerformance(fundItem) {
+    const symbols = fundItem.stocks.map(s => s.symbol).join(",");
+    const weights = fundItem.stocks.map(s => s.weight).join(",");
+    const res = await fetch(
+      `/api/fund?symbols=${symbols}&weights=${weights}&range=${selectedRange}`
+    );
+    if (!res.ok) throw new Error(`Failed to fetch fund: ${fundItem.name}`);
+    return res.json();
+  }
+
   /* =========================
      FUNDAMENTALS TABLE
   ========================= */
   function renderFundamentalsTable(results, metricKey) {
     const chartArea = document.getElementById("chart-area");
-
-    // Hide canvas, show table
     canvas.style.display = "none";
 
-    // Remove old table if exists
     const old = document.getElementById("fundamentalsTable");
     if (old) old.remove();
 
@@ -113,15 +125,18 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.id = "fundamentalsTable";
     wrapper.style.cssText = "overflow-x:auto; width:100%;";
 
-    if (!results.length) {
-      wrapper.innerHTML = `<p style="color:var(--muted);text-align:center;padding:40px 0;">No data available</p>`;
+    // Filter out funds — can't show fundamentals for a fund
+    const stockResults = results.filter(r => r.type === "stock");
+
+    if (!stockResults.length) {
+      wrapper.innerHTML = `<p style="color:var(--muted);text-align:center;padding:40px 0;">
+        Fundamental metrics are only available for individual stocks, not funds.
+      </p>`;
       chartArea.appendChild(wrapper);
       return;
     }
 
     const metricLabel = METRICS[metricKey]?.label || metricKey;
-
-    // Build table
     let html = `
       <div style="margin-bottom:12px;">
         <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">
@@ -134,13 +149,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <th style="text-align:left;padding:10px 12px;color:var(--muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;">Metric</th>
     `;
 
-    results.forEach(r => {
+    stockResults.forEach(r => {
       html += `<th style="text-align:right;padding:10px 12px;color:var(--muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;">${r.symbol}</th>`;
     });
 
     html += `</tr></thead><tbody>`;
 
-    // All fundamental metric keys to show in table
     const fundamentalKeys = [
       "currentPrice", "marketCap", "peRatio", "forwardPE",
       "dividendYield", "week52High", "week52Low",
@@ -150,28 +164,20 @@ document.addEventListener("DOMContentLoaded", () => {
     fundamentalKeys.forEach((key, idx) => {
       const rowBg = idx % 2 === 0 ? "background:var(--bg);" : "";
       html += `<tr style="${rowBg}border-bottom:1px solid var(--border);">`;
-
-      // Get label from first result
-      const label = results[0]?.data?.metrics?.[key]?.label || key;
+      const label = stockResults[0]?.data?.metrics?.[key]?.label || key;
       html += `<td style="padding:10px 12px;font-weight:500;">${label}</td>`;
 
-      results.forEach(r => {
+      stockResults.forEach(r => {
         const metric = r.data?.metrics?.[key];
         const formatted = metric?.formatted ?? "N/A";
         const raw = metric?.raw;
-
-        // Color profit/growth metrics
         let color = "";
-        if (key === "profitMargin" || key === "revenueGrowth" || key === "netIncome") {
+        if (["profitMargin", "revenueGrowth", "netIncome"].includes(key)) {
           if (raw !== null && raw !== undefined) {
             color = raw >= 0 ? "color:var(--positive);" : "color:var(--negative);";
           }
         }
-
-        // Highlight selected metric
-        const isSelected = key === metricKey;
-        const highlight = isSelected ? "font-weight:700;" : "";
-
+        const highlight = key === metricKey ? "font-weight:700;" : "";
         html += `<td style="text-align:right;padding:10px 12px;${color}${highlight}">${formatted}</td>`;
       });
 
@@ -187,12 +193,11 @@ document.addEventListener("DOMContentLoaded", () => {
      CHART UPDATE
   ========================= */
   async function updateChart() {
-    // Remove fundamentals table if switching back to chart metric
     const oldTable = document.getElementById("fundamentalsTable");
     if (oldTable) oldTable.remove();
     canvas.style.display = "block";
 
-    if (!selectedStocks.length) {
+    if (!selectedItems.length) {
       chart.data.labels = [];
       chart.data.datasets = [];
       chart.update();
@@ -202,49 +207,78 @@ document.addEventListener("DOMContentLoaded", () => {
     setLoading(true);
 
     try {
-      // Check if this is a fundamental metric
+      // Fundamentals — only for stocks, not funds
       if (METRICS[selectedMetric]?.isFundamental) {
-        // Fetch fundamentals for all stocks
         const results = await Promise.all(
-          selectedStocks.map(async symbol => ({
-            symbol,
-            data: await fetchFundamentals(symbol).catch(() => null)
-          }))
+          selectedItems.map(async item => {
+            if (item.type === "fund") {
+              return { type: "fund", symbol: item.name, data: null };
+            }
+            return {
+              type: "stock",
+              symbol: item.symbol,
+              data: await fetchFundamentals(item.symbol).catch(() => null)
+            };
+          })
         );
-
         canvas.style.display = "none";
         renderFundamentalsTable(results, selectedMetric);
         setLoading(false);
         return;
       }
 
-      // Chart-based metrics
+      // Fetch data for all items (stocks + funds)
       const results = await Promise.all(
-        selectedStocks.map(async symbol => ({
-          symbol,
-          data: await fetchMetric(symbol).catch(() => null)
-        }))
+        selectedItems.map(async (item, i) => {
+          if (item.type === "fund") {
+            const fundData = await fetchFundPerformance(item).catch(() => null);
+            return {
+              type: "fund",
+              label: `📁 ${item.name}`,
+              labels: fundData?.labels || [],
+              // fund portfolio is already normalized to 100
+              data: fundData?.portfolio || [],
+              color: COLORS[i % COLORS.length],
+              isFund: true
+            };
+          } else {
+            const stockData = await fetchMetric(item.symbol).catch(() => null);
+            return {
+              type: "stock",
+              label: item.symbol,
+              labels: stockData?.labels || [],
+              rawData: stockData,
+              color: COLORS[i % COLORS.length],
+              isFund: false
+            };
+          }
+        })
       );
 
-      const validResults = results.filter(r => r.data?.labels?.length);
+      const validResults = results.filter(r => r.labels?.length);
       if (!validResults.length) { setLoading(false); return; }
 
-      chart.data.labels = validResults[0].data.labels;
+      // Use longest label set
+      const longestResult = validResults.reduce((a, b) =>
+        a.labels.length > b.labels.length ? a : b
+      );
+      chart.data.labels = longestResult.labels;
       chart.data.datasets = [];
 
-      // Reset axes
       chart.options.scales.y.display = true;
       chart.options.scales.yRsi.display = false;
 
-      if (selectedMetric === "rsi") {
+      // RSI and MACD disabled when funds are present
+      if (selectedMetric === "rsi" && !hasFunds()) {
         chart.options.scales.y.display = false;
         chart.options.scales.yRsi.display = true;
-        validResults.forEach((r, i) => {
+        validResults.forEach(r => {
+          if (r.isFund) return;
           chart.data.datasets.push({
-            label: `${r.symbol} • RSI`,
-            data: r.data.rsi,
+            label: `${r.label} • RSI`,
+            data: r.rawData.rsi,
             yAxisID: "yRsi",
-            borderColor: COLORS[i % COLORS.length],
+            borderColor: r.color,
             borderWidth: 2,
             tension: 0.3,
             pointRadius: 0
@@ -255,26 +289,26 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      if (selectedMetric === "macd") {
-        validResults.forEach((r, i) => {
+      if (selectedMetric === "macd" && !hasFunds()) {
+        validResults.forEach(r => {
+          if (r.isFund) return;
           chart.data.datasets.push(
             {
-              label: `${r.symbol} • MACD`,
-              data: r.data.macd,
-              borderColor: COLORS[i % COLORS.length],
+              label: `${r.label} • MACD`,
+              data: r.rawData.macd,
+              borderColor: r.color,
               borderWidth: 2,
               tension: 0.3,
               pointRadius: 0
             },
             {
-              label: `${r.symbol} • Signal`,
-              data: r.data.signal,
-              borderColor: COLORS[i % COLORS.length],
+              label: `${r.label} • Signal`,
+              data: r.rawData.signal,
+              borderColor: r.color,
               borderDash: [6, 4],
               borderWidth: 1.5,
               tension: 0.3,
-              pointRadius: 0,
-              opacity: 0.6
+              pointRadius: 0
             }
           );
         });
@@ -283,25 +317,35 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // All other chart metrics
+      // Price / SMA / EMA / Volume — and fund performance lines
       validResults.forEach((r, i) => {
         let data;
-        switch (selectedMetric) {
-          case "price":   data = normalizeSeries(r.data.price); break;
-          case "volume":  data = r.data.volume; break;
-          case "sma20":   data = r.data.sma20; break;
-          case "ema50":   data = r.data.ema50; break;
-          default:        data = r.data.price;
+
+        if (r.isFund) {
+          // Fund is already a normalized 100-base series
+          data = r.data;
+        } else {
+          switch (selectedMetric) {
+            case "price":  data = normalizeSeries(r.rawData.price); break;
+            case "volume": data = r.rawData.volume; break;
+            case "sma20":  data = r.rawData.sma20; break;
+            case "ema50":  data = r.rawData.ema50; break;
+            // Fall back to normalized price for unsupported metrics when funds present
+            default: data = normalizeSeries(r.rawData.price);
+          }
         }
 
         chart.data.datasets.push({
-          label: `${r.symbol} • ${METRICS[selectedMetric].label}`,
+          label: r.isFund
+            ? r.label
+            : `${r.label} • ${METRICS[selectedMetric]?.label || "Price"}`,
           data,
-          borderColor: COLORS[i % COLORS.length],
-          backgroundColor: i === 0 ? `${COLORS[0]}10` : "transparent",
-          borderWidth: 2,
+          borderColor: r.color,
+          backgroundColor: i === 0 ? `${r.color}10` : "transparent",
+          borderWidth: r.isFund ? 2.5 : 2,
+          borderDash: r.isFund ? [8, 4] : [],  // funds appear as dashed lines
           tension: 0.3,
-          fill: i === 0,
+          fill: i === 0 && !r.isFund,
           pointRadius: 0,
           pointHoverRadius: 4
         });
@@ -316,12 +360,45 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* =========================
-     STOCK SEARCH
+     PILLS RENDERING
+     Handles both stocks and funds
   ========================= */
-  const stockInput = document.getElementById("stock-input");
-  const tickerResults = document.getElementById("tickerResults");
   const selectedStocksContainer = document.getElementById("selected-stocks");
 
+  function renderPills() {
+    selectedStocksContainer.innerHTML = "";
+    selectedItems.forEach((item, i) => {
+      const pill = document.createElement("div");
+      pill.className = "pill";
+      pill.style.borderLeft = `3px solid ${COLORS[i % COLORS.length]}`;
+
+      if (item.type === "fund") {
+        pill.style.background = "#1e1b4b"; // darker purple for funds
+        pill.innerHTML = `
+          <span style="font-size:0.7rem;opacity:0.7;margin-right:4px;">FUND</span>
+          ${item.name}
+          <span class="remove">×</span>
+        `;
+      } else {
+        pill.innerHTML = `${item.symbol} <span class="remove">×</span>`;
+      }
+
+      pill.querySelector(".remove").onclick = () => {
+        selectedItems = selectedItems.filter((_, idx) => idx !== i);
+        renderPills();
+        updateFundButton();
+        updateChart();
+      };
+
+      selectedStocksContainer.appendChild(pill);
+    });
+  }
+
+  /* =========================
+     STOCK SEARCH
+  ========================= */
+  const stockInput    = document.getElementById("stock-input");
+  const tickerResults = document.getElementById("tickerResults");
   let searchDebounce;
 
   stockInput.addEventListener("input", async e => {
@@ -335,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchDebounce = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${q}`);
+        const res  = await fetch(`/api/search?q=${q}`);
         const data = await res.json();
         tickerResults.innerHTML = "";
 
@@ -347,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
         data.forEach(s => {
           const li = document.createElement("li");
           li.innerHTML = `<strong>${s.symbol}</strong> — ${s.name}`;
-          li.onclick = () => addStock(s.symbol);
+          li.onclick   = () => addStock(s.symbol);
           tickerResults.appendChild(li);
         });
         tickerResults.style.display = "block";
@@ -364,40 +441,122 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function addStock(symbol) {
-    if (selectedStocks.includes(symbol)) return;
-    if (selectedStocks.length >= 6) {
-      alert("Maximum 6 stocks for comparison.");
+    if (selectedItems.some(i => i.type === "stock" && i.symbol === symbol)) return;
+    if (selectedItems.length >= 6) {
+      alert("Maximum 6 items for comparison.");
       return;
     }
-    selectedStocks.push(symbol);
+    selectedItems.push({ type: "stock", symbol });
     stockInput.value = "";
     tickerResults.innerHTML = "";
     tickerResults.style.display = "none";
-    renderStockPills();
+    renderPills();
+    updateFundButton();
     updateChart();
   }
 
-  function renderStockPills() {
-    selectedStocksContainer.innerHTML = "";
-    selectedStocks.forEach((symbol, i) => {
-      const pill = document.createElement("div");
-      pill.className = "pill";
-      pill.style.borderLeft = `3px solid ${COLORS[i % COLORS.length]}`;
-      pill.innerHTML = `${symbol} <span class="remove">×</span>`;
-      pill.querySelector(".remove").onclick = () => {
-        selectedStocks = selectedStocks.filter(s => s !== symbol);
-        renderStockPills();
-        updateChart();
+  /* =========================
+     FUND PICKER
+  ========================= */
+  const addFundBtn     = document.getElementById("addFundBtn");
+  const fundDropdown   = document.getElementById("fundDropdown");
+
+  function getSavedFunds() {
+    try {
+      return JSON.parse(sessionStorage.getItem("viresce_funds") || "[]");
+    } catch { return []; }
+  }
+
+  function updateFundButton() {
+    const funds = getSavedFunds();
+    if (addFundBtn) {
+      addFundBtn.disabled = funds.length === 0;
+      addFundBtn.title    = funds.length === 0
+        ? "No saved funds — build one on the My Fund page first"
+        : "Add a saved fund to comparison";
+    }
+  }
+
+  function renderFundDropdown() {
+    const funds = getSavedFunds();
+    if (!fundDropdown) return;
+
+    fundDropdown.innerHTML = "";
+
+    if (!funds.length) {
+      const li = document.createElement("li");
+      li.textContent = "No saved funds yet";
+      li.style.cssText = "color:var(--muted);pointer-events:none;font-style:italic;";
+      fundDropdown.appendChild(li);
+      return;
+    }
+
+    funds.forEach(fund => {
+      const alreadyAdded = selectedItems.some(
+        i => i.type === "fund" && i.id === fund._id
+      );
+
+      const li = document.createElement("li");
+      li.style.cssText = alreadyAdded ? "opacity:0.4;pointer-events:none;" : "";
+
+      const stockTags = fund.stocks
+        .map(s => `${s.symbol} ${Math.round(s.weight * 100)}%`)
+        .join(" · ");
+
+      li.innerHTML = `
+        <strong>${fund.name}</strong>
+        <span style="display:block;font-size:0.75rem;color:var(--muted);margin-top:2px;">${stockTags}</span>
+        ${alreadyAdded ? '<span style="font-size:0.7rem;color:var(--muted);">Already added</span>' : ""}
+      `;
+
+      li.onclick = () => {
+        if (alreadyAdded) return;
+        addFund(fund);
+        fundDropdown.style.display = "none";
       };
-      selectedStocksContainer.appendChild(pill);
+
+      fundDropdown.appendChild(li);
     });
   }
+
+  function addFund(fund) {
+    if (selectedItems.length >= 6) {
+      alert("Maximum 6 items for comparison.");
+      return;
+    }
+    selectedItems.push({
+      type:   "fund",
+      id:     fund._id,
+      name:   fund.name,
+      stocks: fund.stocks  // [{ symbol, weight }]
+    });
+    renderPills();
+    updateFundButton();
+    updateChart();
+  }
+
+  if (addFundBtn) {
+    addFundBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      renderFundDropdown();
+      const isVisible = fundDropdown.style.display === "block";
+      fundDropdown.style.display = isVisible ? "none" : "block";
+    });
+  }
+
+  document.addEventListener("click", e => {
+    if (fundDropdown &&
+        !addFundBtn?.contains(e.target) &&
+        !fundDropdown.contains(e.target)) {
+      fundDropdown.style.display = "none";
+    }
+  });
 
   /* =========================
      METRIC SELECTOR
   ========================= */
-  const metricInput = document.getElementById("metric-input");
-  const metricResults = document.getElementById("metricResults");
+  const metricInput            = document.getElementById("metric-input");
+  const metricResults          = document.getElementById("metricResults");
   const selectedMetricContainer = document.getElementById("selected-metric");
 
   function renderMetricPill() {
@@ -414,7 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
       selectedMetric = "price";
       renderMetricPill();
       normalizeToggle.disabled = false;
-      normalizeToggle.checked = false;
+      normalizeToggle.checked  = false;
       normalize = false;
       updateChart();
     };
@@ -426,9 +585,8 @@ document.addEventListener("DOMContentLoaded", () => {
     metricResults.innerHTML = "";
     metricResults.style.display = "block";
 
-    // Group: chart metrics first, then fundamentals
     const chartMetrics = Object.entries(METRICS).filter(([, m]) => !m.isFundamental);
-    const fundMetrics = Object.entries(METRICS).filter(([, m]) => m.isFundamental);
+    const fundMetrics  = Object.entries(METRICS).filter(([, m]) => m.isFundamental);
 
     const addGroup = (label, entries) => {
       const filtered = entries.filter(([, m]) => m.label.toLowerCase().includes(q));
@@ -442,15 +600,21 @@ document.addEventListener("DOMContentLoaded", () => {
       filtered.forEach(([key, metric]) => {
         const li = document.createElement("li");
         li.textContent = metric.label;
+
+        // Disable fundamentals when a fund is selected
+        if (metric.isFundamental && hasFunds()) {
+          li.style.cssText = "opacity:0.4;pointer-events:none;";
+          li.title = "Fundamental metrics not available when comparing funds";
+        }
+
         li.onclick = () => {
           selectedMetric = key;
           metricInput.value = "";
           metricResults.style.display = "none";
           renderMetricPill();
-          // Disable normalize for fundamental metrics
           if (metric.isFundamental) {
             normalizeToggle.disabled = true;
-            normalizeToggle.checked = false;
+            normalizeToggle.checked  = false;
             normalize = false;
           } else {
             normalizeToggle.disabled = false;
@@ -464,12 +628,9 @@ document.addEventListener("DOMContentLoaded", () => {
     addGroup("Chart Metrics", chartMetrics);
     addGroup("Fundamentals", fundMetrics);
 
-    if (!metricResults.children.length) {
-      metricResults.style.display = "none";
-    }
+    if (!metricResults.children.length) metricResults.style.display = "none";
   });
 
-  // Show all metrics on focus
   metricInput.addEventListener("focus", () => {
     metricInput.dispatchEvent(new Event("input"));
   });
@@ -505,4 +666,5 @@ document.addEventListener("DOMContentLoaded", () => {
      INIT
   ========================= */
   renderMetricPill();
+  updateFundButton();
 });
